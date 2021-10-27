@@ -41,7 +41,9 @@ for (i in 1:(J*num.patch*(num.years-1))) {
     Pr.1 <-  fit.ratio*freq.1/(fit.ratio*freq.1 + freq.2)
     Bool<-0 # See above
   }
-  if(Bool==0&&sum(COM[,patch])<(runif(1)*J)){}else{ ##This line scales local reproduction rate by the total patch population. Newly-colonized patches with few individuals have a chance of skipping reproduction proportional to % missing population.
+   ##This line scales local reproduction rate by the total patch population. This prevents empty patches from reproducing.
+   ## Newly-colonized patches with few individuals also have a chance of skipping reproduction proportional to % missing population. 
+  if(Bool==0&&sum(COM[,patch])<(runif(1)*J)){}else{
   COM[ceiling(J*runif(1)),patch] <- sample(c(1,2), 1, prob=c(Pr.1,1-round(Pr.1, digits=5)))}
   
   ## record data  
