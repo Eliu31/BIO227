@@ -26,11 +26,11 @@ for (i in 1:(J*num.patch*(num.years-1))) {
   
   ## choose a patch where a death even will occur  
   patch <- sample(1:num.patch,1)
-  occupied_patch<-sum(COM!=0)/(J) #Calculates the proportion of all patches that are currently occupied.  
+  occupied_patch<-sum(COM!=0)/(J) #Calculates the number of all patches that are currently occupied.  
   
   ## calculate Pr.1 if dispersal occurs  
   if (runif(1) < m) {
-    freq.1.meta <- sum(COM==1)/(J*occupied_patch) #Changes frequency calculation to be proportion of occupied patches (rather than all patches)
+    freq.1.meta <- sum(COM==1)/(J*occupied_patch) #Frequency calculation divides by the number of living organisms rather than the total number of spots.
     Pr.1 <- fit.ratio.m*freq.1.meta/(fit.ratio.m*freq.1.meta + (1-freq.1.meta))
     Bool<-1  # Added a Boolean marker to signify dispersal case
   } else { 
@@ -39,7 +39,7 @@ for (i in 1:(J*num.patch*(num.years-1))) {
     freq.1 <- sum(COM[,patch]==1)/(sum(COM[,patch]!=0)+10^-20); freq.2 <- 1 - freq.1 #Same as above; frequency calculation reflects patch occupancy rather than raw patch number. 
     fit.ratio <- exp(freq.dep[patch]*(freq.1-0.5) + log(fit.ratio.avg[patch]))
     Pr.1 <-  fit.ratio*freq.1/(fit.ratio*freq.1 + freq.2)
-    Bool<-0 # See above.
+    Bool<-0 # See above
   }
   if(Bool==0&&sum(COM[,patch])<(runif(1)*J)){}else{ ##This line scales local reproduction rate by the total patch population. Newly-colonized patches with few individuals have a chance of skipping reproduction proportional to % missing population.
   COM[ceiling(J*runif(1)),patch] <- sample(c(1,2), 1, prob=c(Pr.1,1-round(Pr.1, digits=5)))}
