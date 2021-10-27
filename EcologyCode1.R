@@ -1,0 +1,58 @@
+num.years <- 50 #Simulation Years
+num.patch <- 10 #Number of Patches
+J <- 100 # Patch carrying capacity
+initial.patch <- 1 #Number of Initially Occupied Patches
+m <- 0.02 #Dispersal Probability
+fit.ratio.m <- 1/5 #Dispersal Fitness Ratio
+Np <- 0.5 #Fraction of Species 1 in initial condition 
+
+fit.ratio.avg <- vector(length=num.patch)
+fit.ratio.avg[] <- c(1.2,1.2) #Reproductive Fitness ratio
+freq.dep <- vector(length=num.patch)
+freq.dep[] <- 0 # Frequency Dependence
+
+P <- c(rep(J, initial.patch), rep(0, num.patch-initial.patch)) # Defines Patch Population Vector
+init.1 <- Np*J 
+COM <- matrix(nrow=J, ncol=num.patch)
+COM[1:init.1,] <- 1; COM[(init.1+1):J,] <- 2 
+COM[,P==0]<-0
+year <- 2
+
+freq.1.mat <- matrix(nrow = num.years, ncol = num.patch)
+freq.1.mat[1,] <- (init.1*P)/J^2 #Changed initial frequency calculation due to changes in J/init.1
+
+## run simulation
+for (i in 1:(J*num.patch*(num.years-1))) {
+  
+  ## choose a patch where a death even will occur  
+  patch <- sample(1:num.patch,1)
+  occupied_patch<-sum(COM!=0)/(J) #Calculates the proportion of all patches that are currently occupied.  
+  
+  ## calculate Pr.1 if dispersal occurs  
+  if (runif(1) < m) {
+    freq.1.meta <- sum(COM==1)/(J*occupied_patch) #Changes frequency calculation to be proportion of occupied patches (rather than all patches)
+    Pr.1 <- fit.ratio.m*freq.1.meta/(fit.ratio.m*freq.1.meta + (1-freq.1.meta))
+    Bool<-1  # Added a Boolean marker to signify dispersal case
+  } else { 
+    
+    ## calculate Pr.1 if local reproduction (not dispersal)
+    freq.1 <- sum(COM[,patch]==1)/(sum(COM[,patch]!=0)+10^-20); freq.2 <- 1 - freq.1 #Same as above; frequency calculation reflects patch occupancy rather than raw patch number. 
+    fit.ratio <- exp(freq.dep[patch]*(freq.1-0.5) + log(fit.ratio.avg[patch]))
+    Pr.1 <-  fit.ratio*freq.1/(fit.ratio*freq.1 + freq.2)
+    Bool<-0 # See above.
+  }
+  if(Bool==0&&sum(COM[,patch])<(runif(1)*J)){}else{ ##This line scales local reproduction rate by the total patch population. Newly-colonized patches with few individuals have a chance of skipping reproduction proportional to % missing population.
+  COM[ceiling(J*runif(1)),patch] <- sample(c(1,2), 1, prob=c(Pr.1,1-round(Pr.1, digits=5)))}
+  
+  ## record data  
+  if (i %% (J*num.patch) == 0) {
+    freq.1.mat[year,] <- colSums(COM==1)/J
+    year <- year + 1 
+  }
+} 
+
+## graph the results
+plot(1:num.years, freq.1.mat[,1], type="l", xlab="Time", 
+     ylab="Frequency of species 1", ylim=c(0,1))
+for (i in 2:(num.patch)) {
+  lines(1:num.years,freq.1.mat[,i], type="l", lty=2, ylim=c(0,1))}
