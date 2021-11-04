@@ -3,13 +3,16 @@ library(cowplot)
 
 theme_set(theme_cowplot())
 
-num.years <- 50 #Simulation Years
+num.years <- 150 #Simulation Years
 num.patch <- 10 #Number of Patches
 J <- 100 # Patch carrying capacity
 initial.patch <- 1 #Number of Initially Occupied Patches
 m <- 0.02 #Dispersal Probability
 fit.ratio.m <- 1/5 #Dispersal Fitness Ratio
 Np <- 0.5 #Fraction of Species 1 in initial condition 
+Dep.ratio <- 0 # Percentage of each patch depleted in disturbance event
+Patch.Dep.ratio <- .9 # Percentage of patches depleted in disturbance event
+Disturb_year<- 50 # Time between patch saturation and disturbance event
 
 fit.ratio.avg <- vector(length=num.patch)
 fit.ratio.avg[] <- c(1.2,1.2) #Reproductive Fitness ratio
@@ -52,6 +55,13 @@ for (i in 1:(J*num.patch*(num.years-1))) {
     COM[ceiling(J*runif(1)),patch] <- sample(c(1,2), 1, prob=c(Pr.1,1-round(Pr.1, digits=5)))}
   
   ## record data  
+  
+  if(year==Disturb_year){
+      print("Disturb")
+      COM[1:(J*Dep.ratio),]<-0
+      COM[,1:round(num.patch*Patch.Dep.ratio)]<-0
+    }
+  
   if (i %% (J*num.patch) == 0) {
     freq.1.mat[year,] <- colSums(COM==1)/J
     year <- year + 1 
