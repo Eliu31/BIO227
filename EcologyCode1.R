@@ -1,3 +1,8 @@
+library(tidyverse)
+library(cowplot)
+
+theme_set(theme_cowplot())
+
 num.years <- 50 #Simulation Years
 num.patch <- 10 #Number of Patches
 J <- 100 # Patch carrying capacity
@@ -58,3 +63,15 @@ plot(1:num.years, freq.1.mat[,1], type="l", xlab="Time",
      ylab="Frequency of species 1", ylim=c(0,1))
 for (i in 2:(num.patch)) {
   lines(1:num.years,freq.1.mat[,i], type="l", lty=2, ylim=c(0,1))}
+
+# Convert frequency matrix into a dataframe.
+freqs <- as.data.frame(freq.1.mat) %>%
+  mutate(time=1:n())
+# Tidy the dataframe.
+freqs <- freqs %>%
+  group_by(time) %>%
+  gather(patch, freq1, -time)
+# Plot species 1 frequencies over time.
+freqs %>%
+  ggplot() +
+  geom_line(aes(x=time, y=freq1, group=factor(patch), color=factor(patch)))
