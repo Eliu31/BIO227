@@ -23,8 +23,12 @@ COM[1:init.1,] <- 1; COM[(init.1+1):J,] <- 2
 COM[,P==0]<-0
 year <- 2
 
+# Set up a matrix to record the frequencies over time.
 freq.1.mat <- matrix(nrow = num.years, ncol = num.patch)
 freq.1.mat[1,] <- (init.1*P)/J^2 #Changed initial frequency calculation due to changes in J/init.1
+# Set up a matrix to record the population sizes over time.
+pop.sizes <- matrix(nrow = num.years, ncol=num.patch)
+pop.sizes[1,] <- P
 
 ## run simulation
 for (i in 1:(J*num.patch*(num.years-1))) {
@@ -55,6 +59,9 @@ for (i in 1:(J*num.patch*(num.years-1))) {
   if (i %% (J*num.patch) == 0) {
     freq.1.mat[year,] <- colSums(COM==1)/J
     year <- year + 1 
+    for (j in 1:num.patch) {
+      pop.sizes[year-1,j] <- sum(COM[,j]!=0)
+    }
   }
 } 
 
@@ -75,3 +82,27 @@ freqs <- freqs %>%
 freqs %>%
   ggplot() +
   geom_line(aes(x=time, y=freq1, group=factor(patch), color=factor(patch)))
+
+# Convert population sizes into a dataframe.
+data.pop.sizes <- as.data.frame(pop.sizes) %>%
+  mutate(time=1:n())
+# Tidy the dataframe.
+data.pop.sizes <- data.pop.sizes %>%
+  group_by(time) %>%
+  gather(patch, populationSize, -time)
+# Plot species 1 frequencies over time.
+data.pop.sizes %>%
+  ggplot() +
+  geom_line(aes(x=time, y=populationSize, group=factor(patch), color=factor(patch)))
+
+# Plot the proportion of the population that consists of species 1 and 2.
+# Combine the dataframes on species frequencies and population sizes.
+data.com <- left_join(freqs, data.pop.sizes, by=c("time","patch"))
+data.com %>%
+  mutate(species1=round(freq1*populationSize),
+         species2=populationSize-species1) %>%
+  dplyr::select(-freq1, -populationSize) %>%
+  gather(species, populationSize, -patch, -time) %>%
+  ggplot() +
+  geom_area(aes(x=time, y=populationSize, fill=factor(species))) +
+  facet_wrap(~patch)
