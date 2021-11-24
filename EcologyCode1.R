@@ -3,17 +3,26 @@ library(cowplot)
 
 theme_set(theme_cowplot())
 
+########BASIC PARAMETERS##########
 num.years <- 150 #Simulation Years
 num.patch <- 10 #Number of Patches
 J <- 100 # Patch carrying capacity
 initial.patch <- 1 #Number of Initially Occupied Patches
-m <- 0.02 #Dispersal Probability
-fit.ratio.m <- 1/5 #Dispersal Fitness Ratio
 Np <- 0.5 #Fraction of Species 1 in initial condition 
-Dep.ratio <- 0 # Percentage of each patch depleted in disturbance event
-Patch.Dep.ratio <- .9 # Percentage of patches depleted in disturbance event
-Disturb_year<- 50 # Time between patch saturation and disturbance event
+m <- 0.01 #Dispersal Probability
 
+########DISTURBANCE PARAMETERS##########
+Dep.ratio <- .95 #Percentage of each patch depleted in disturbance event
+Patch.Dep.ratio <- .9 #Percentage of patches depleted in disturbance event
+Distubance_events <- 4 #Total Number of Disturbance Events
+Disturbance_interval <- 50 #Time between each disturbance event
+Disturb_year<- seq(Disturbance_interval,Disturbance_interval*Distubance_events,Disturbance_interval) # Disturbance time Vector
+
+Density_Dependent_Disturbance  <- F #Enable density-dependent disturbance that waits until all patches are saturated Enabling this option disables the two interval-based options above. 
+Density_Dependent_Disturbance_Thresh <- .99 #Saturation threshold for density-dependent disturbance
+  
+########FITNESS PARAMETERS##########
+fit.ratio.m <- 1/5 #Dispersal Fitness Ratio
 fit.ratio.avg <- vector(length=num.patch)
 fit.ratio.avg[] <- c(1.2,1.2) #Reproductive Fitness ratio
 freq.dep <- vector(length=num.patch)
@@ -59,16 +68,21 @@ for (i in 1:(J*num.patch*(num.years-1))) {
     COM[ceiling(J*runif(1)),patch] <- sample(c(1,2), 1, prob=c(Pr.1,1-round(Pr.1, digits=5)))}
   
   ## record data  
-  
-  if(year==Disturb_year){
-      print("Disturb")
-      COM[1:(J*Dep.ratio),]<-0
-      COM[,1:round(num.patch*Patch.Dep.ratio)]<-0
-    }
+
   
   if (i %% (J*num.patch) == 0) {
     freq.1.mat[year,] <- colSums(COM==1)/J
     year <- year + 1 
+    if(year%in%Disturb_year&&Density_Dependent_Disturbance==F){
+      print("Disturb")
+      patch_sample<-sample(c(1:num.patch), replace=F, size=(round(num.patch*Patch.Dep.ratio)))
+      COM[sample(c(1:J), replace=F, size=(round(J*Dep.ratio))),patch_sample]<-0
+    }
+    if(sum(COM!=0)>(J*num.patch*Density_Dependent_Disturbance_Thresh)&&Density_Dependent_Disturbance==T){
+      print("DENS_Disturb")
+      patch_sample<-sample(c(1:num.patch), replace=F, size=(round(num.patch*Patch.Dep.ratio)))
+      COM[sample(c(1:J), replace=F, size=(round(J*Dep.ratio))),patch_sample]<-0
+    }
     for (j in 1:num.patch) {
       pop.sizes[year-1,j] <- sum(COM[,j]!=0)
     }
@@ -80,6 +94,7 @@ plot(1:num.years, freq.1.mat[,1], type="l", xlab="Time",
      ylab="Frequency of species 1", ylim=c(0,1))
 for (i in 2:(num.patch)) {
   lines(1:num.years,freq.1.mat[,i], type="l", lty=2, ylim=c(0,1))}
+
 
 # Convert frequency matrix into a dataframe.
 freqs <- as.data.frame(freq.1.mat) %>%
