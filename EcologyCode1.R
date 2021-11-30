@@ -3,6 +3,7 @@ library(cowplot)
 library(foreach)
 
 theme_set(theme_cowplot())
+outdir <- "211107-plots/"
 
 ########BASIC PARAMETERS##########
 num.years <- 249 #Simulation Years
@@ -174,10 +175,14 @@ freqs <- freqs %>%
   group_by(time) %>%
   gather(patch, freq1, -time)
 # Plot species 1 frequencies over time.
-freqs %>%
+p <- freqs %>%
   ggplot() +
-  geom_line(aes(x=time, y=freq1, group=factor(patch), color=factor(patch)))
-
+  geom_line(aes(x=time, y=freq1, group=factor(patch), color=factor(patch))) +
+  scale_color_brewer(palette = "Set3") +
+  guides(color=FALSE) +
+  xlab("Time") + ylab("Species 1 frequency")
+save_plot(paste0(outdir,"species1freqs.png"), p,
+          ncol=0.7, nrow=0.7)
 # Convert population sizes into a dataframe.
 data.pop.sizes <- as.data.frame(pop.sizes) %>%
   mutate(time=1:n()+1)
@@ -185,22 +190,33 @@ data.pop.sizes <- as.data.frame(pop.sizes) %>%
 data.pop.sizes <- data.pop.sizes %>%
   group_by(time) %>%
   gather(patch, populationSize, -time)
-# Plot population sizes over time.
-data.pop.sizes %>%
+
+# Plot population size over time.
+p <- data.pop.sizes %>%
   ggplot() +
-  geom_line(aes(x=time, y=populationSize, group=factor(patch), color=factor(patch)))
+  geom_line(aes(x=time, y=populationSize, group=factor(patch), color=factor(patch))) +
+  scale_color_brewer(palette = "Set3") +
+  guides(color=FALSE) +
+  xlab("Time") + ylab("Population size")
+save_plot(paste0(outdir,"populationSizes.png"), p,
+          ncol=0.7, nrow=0.7)
 
 # Plot the proportion of the population that consists of species 1 and 2.
 # Combine the dataframes on species frequencies and population sizes.
 data.com <- left_join(freqs, data.pop.sizes, by=c("time","patch"))
-data.com %>%
+p <- data.com %>%
   mutate(species1=round(freq1*J),
          species2=populationSize-species1) %>%
   dplyr::select(-freq1, -populationSize) %>%
   gather(species, populationSize, -patch, -time) %>%
   ggplot() +
-  geom_area(aes(x=time, y=populationSize, fill=factor(species))) +
-  facet_wrap(~patch)
+  geom_area(aes(x=time, y=populationSize, fill=factor(species)),
+            color="black") +
+  scale_fill_brewer(palette="Set3", name="Species") +
+  facet_wrap(~patch, ncol=5, scales="free") +
+  xlab("Time") + ylab("Number of individuals")
+save_plot(paste0(outdir,"species1abundances.png"), p,
+          ncol=2, nrow=1)
 # Plot the overall frequency of species 1 and 2 across all patches.
 data.com %>%
   group_by(time) %>%
@@ -217,3 +233,4 @@ data.com %>%
   ggplot() +
   geom_line(aes(x=time, y=totalfreq1)) +
   ylim(0,1)
+  
