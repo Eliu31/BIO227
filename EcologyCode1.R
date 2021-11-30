@@ -69,9 +69,12 @@ for (i in 1:(J*num.patch*(num.years-1))) {
   
   ## record data  
 
-  
+
   if (i %% (J*num.patch) == 0) {
     freq.1.mat[year,] <- colSums(COM==1)/J
+    for (j in 1:num.patch) {
+    pop.sizes[year-1,j] <- sum(COM[,j]!=0)
+    }
     year <- year + 1 
     if(year%in%Disturb_year&&Density_Dependent_Disturbance==F){
       print("Disturb")
@@ -82,9 +85,6 @@ for (i in 1:(J*num.patch*(num.years-1))) {
       print("DENS_Disturb")
       patch_sample<-sample(c(1:num.patch), replace=F, size=(round(num.patch*Patch.Dep.ratio)))
       COM[sample(c(1:J), replace=F, size=(round(J*Dep.ratio))),patch_sample]<-0
-    }
-    for (j in 1:num.patch) {
-      pop.sizes[year-1,j] <- sum(COM[,j]!=0)
     }
   }
 } 
@@ -110,7 +110,7 @@ freqs %>%
 
 # Convert population sizes into a dataframe.
 data.pop.sizes <- as.data.frame(pop.sizes) %>%
-  mutate(time=1:n())
+  mutate(time=1:n()+1)
 # Tidy the dataframe.
 data.pop.sizes <- data.pop.sizes %>%
   group_by(time) %>%
@@ -124,7 +124,7 @@ data.pop.sizes %>%
 # Combine the dataframes on species frequencies and population sizes.
 data.com <- left_join(freqs, data.pop.sizes, by=c("time","patch"))
 data.com %>%
-  mutate(species1=round(freq1*populationSize),
+  mutate(species1=round(freq1*J),
          species2=populationSize-species1) %>%
   dplyr::select(-freq1, -populationSize) %>%
   gather(species, populationSize, -patch, -time) %>%
