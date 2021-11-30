@@ -31,7 +31,7 @@ freq.dep[] <- 0 # Frequency Dependence
 
 data <- foreach(interval=c(10,25,50,75,100,125,250), .combine="rbind") %do% {
 
-  foreach(simulation=seq(1,50), .combine="rbind") %do% {
+  foreach(simulation=seq(1,3), .combine="rbind") %do% {
     Disturbance_interval <- interval #Time between each disturbance event
     Disturb_year<- seq(Disturbance_interval,Disturbance_interval*Distubance_events,Disturbance_interval) # Disturbance time Vector
 
@@ -80,6 +80,9 @@ data <- foreach(interval=c(10,25,50,75,100,125,250), .combine="rbind") %do% {
 
       if (i %% (J*num.patch) == 0) {
         freq.1.mat[year,] <- colSums(COM==1)/J
+        for (j in 1:num.patch) {
+          pop.sizes[year-1,j] <- sum(COM[,j]!=0)
+        }
         year <- year + 1
         if(year%in%Disturb_year&&Density_Dependent_Disturbance==F){
           print("Disturb")
@@ -91,11 +94,10 @@ data <- foreach(interval=c(10,25,50,75,100,125,250), .combine="rbind") %do% {
           patch_sample<-sample(c(1:num.patch), replace=F, size=(round(num.patch*Patch.Dep.ratio)))
           COM[sample(c(1:J), replace=F, size=(round(J*Dep.ratio))),patch_sample]<-0
         }
-        for (j in 1:num.patch) {
-          pop.sizes[year-1,j] <- sum(COM[,j]!=0)
-        }
       }
     }
+    
+  
 
     #######TIDY AND OUTPUT DATA#########
     # Convert frequency matrix into a dataframe.
@@ -107,7 +109,7 @@ data <- foreach(interval=c(10,25,50,75,100,125,250), .combine="rbind") %do% {
       gather(patch, freq1, -time)
     # Convert population sizes into a dataframe.
     data.pop.sizes <- as.data.frame(pop.sizes) %>%
-      mutate(time=1:n())
+      mutate(time=1:n()+1)
     # Tidy the dataframe.
     data.pop.sizes <- data.pop.sizes %>%
       group_by(time) %>%
@@ -120,24 +122,42 @@ data <- foreach(interval=c(10,25,50,75,100,125,250), .combine="rbind") %do% {
 }
 
 
-  if (i %% (J*num.patch) == 0) {
-    freq.1.mat[year,] <- colSums(COM==1)/J
-    for (j in 1:num.patch) {
-    pop.sizes[year-1,j] <- sum(COM[,j]!=0)
-    }
-    year <- year + 1
-    if(year%in%Disturb_year&&Density_Dependent_Disturbance==F){
-      print("Disturb")
-      patch_sample<-sample(c(1:num.patch), replace=F, size=(round(num.patch*Patch.Dep.ratio)))
-      COM[sample(c(1:J), replace=F, size=(round(J*Dep.ratio))),patch_sample]<-0
-    }
-    if(sum(COM!=0)>(J*num.patch*Density_Dependent_Disturbance_Thresh)&&Density_Dependent_Disturbance==T){
-      print("DENS_Disturb")
-      patch_sample<-sample(c(1:num.patch), replace=F, size=(round(num.patch*Patch.Dep.ratio)))
-      COM[sample(c(1:J), replace=F, size=(round(J*Dep.ratio))),patch_sample]<-0
-    }
-  }
-}
+# Plot the overall abundance of species 1 across all patches.
+data %>%
+  group_by(time, interval, simulation) %>%
+  mutate(species1=round(freq1*J),
+         species2=populationSize-species1) %>%
+  summarize(totalfreq1=sum(species1)/sum(populationSize)) %>%
+  ggplot() +
+  geom_line(aes(x=time, y=totalfreq1, group=factor(simulation))) +
+  facet_wrap(~interval) +
+  ylim(0,1)
+
+# Calculate the first year in which species 1 reaches fixation
+# across all patches for each simulation.
+data %>%
+  group_by(time, interval, simulation) %>%
+  mutate(species1=round(freq1*J),
+         species2=populationSize-species1) %>%
+  summarize(totalfreq1=sum(species1)/sum(populationSize)) %>%
+  ungroup() %>% group_by(interval, simulation) %>%
+  filter(totalfreq1==1) %>% top_n(-1, time) %>% ungroup() %>%
+  complete(totalfreq1, interval, simulation, fill=list(time=250)) %>%
+  ggplot() +
+  geom_point(aes(x=interval, y=time), alpha=0.5) +
+  ylim(0,250)
+# Plot the % of simulations in which species 1 fixes in 250 years.
+data %>%
+  group_by(time, interval, simulation) %>%
+  mutate(numspecies1=freq1*populationSize) %>%
+  summarize(totalfreq1=sum(numspecies1)/sum(populationSize)) %>%
+  ungroup() %>% group_by(interval, simulation) %>%
+  filter(totalfreq1==1) %>% top_n(-1, time) %>% ungroup() %>%
+  complete(totalfreq1, interval, simulation, fill=list(time=250)) %>%
+  group_by(interval) %>% summarize(numFixed=sum(time<250)) %>%
+  ggplot() +
+  geom_bar(aes(x=interval, y=numFixed), stat="identity") +
+  ylim(0,max(data$simulation))
 
 ## graph the results
 plot(1:num.years, freq.1.mat[,1], type="l", xlab="Time",
@@ -186,6 +206,14 @@ data.com %>%
   group_by(time) %>%
   mutate(numspecies1=freq1*populationSize) %>%
   summarize(totalfreq1=sum(numspecies1)/sum(populationSize)) %>%
+  ggplot() +
+  geom_line(aes(x=time, y=totalfreq1)) +
+  ylim(0,1)
+data.com %>%
+  group_by(time) %>%
+  mutate(species1=round(freq1*J),
+         species2=populationSize-species1) %>%
+  summarize(totalfreq1=sum(species1)/sum(populationSize)) %>%
   ggplot() +
   geom_line(aes(x=time, y=totalfreq1)) +
   ylim(0,1)
