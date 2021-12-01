@@ -229,3 +229,38 @@ data.com %>%
   geom_line(aes(x=time, y=totalfreq1)) +
   ylim(0,1)
   
+term_data<-data %>%
+  group_by(time, interval, simulation) %>%
+  mutate(species1=round(freq1*J),
+         species2=populationSize-species1) %>%
+  summarize(totalfreq1=sum(species1)/sum(populationSize)) %>%
+  ungroup() %>% group_by(interval, simulation) %>%
+  filter(totalfreq1==1) %>% top_n(-1, time) %>% ungroup() %>%
+  complete(totalfreq1, interval, simulation, fill=list(time=max(term_data$time)))
+
+#####Code for generating survival plots####
+data <- read.table("BIO227/simulation_output_50reps.txt",
+                   header=TRUE, stringsAsFactors = FALSE)
+#Convert lifespan into cumulative data
+term_data_ord<-term_data[order(term_data$interval, term_data$time),]
+temp<-term_data_ord[seq(1,nrow(term_data_ord),49),]
+temp$time<-0
+term_data_ord<-rbind(temp, term_data_ord)
+term_data_ord<-term_data_ord[order(term_data_ord$interval, term_data_ord$time),]
+term_data_ord$cumusum<-rep(seq(1,0, length.out=(length(unique(term_data_ord$simulation)))+1),length(unique(term_data_ord$interval)))
+
+#Trim 250+ year survivors from the plot
+cleanvec<-term_data_ord[term_data_ord$time==max(term_data_ord$time),]%>%count(interval)
+seq2 <- Vectorize(seq.default, vectorize.args = c("from", "to"))
+tempseq<-seq(1,length.out=length(unique(term_data_ord$interval)), by=50)
+term_data_ord_dedup<-term_data_ord[unlist(seq2(from=tempseq, to=(tempseq+(50-cleanvec$n)))),]
+
+#Plot Data
+term_data_ord_dedup%>%
+  ggplot() +
+  geom_step(aes(x=time, y=cumusum, color=-interval),size=1) +
+  scale_fill_brewer(palette="Set3", name="Species") + xlim(0,250)+ylim(0,1)+
+  facet_wrap(~interval, ncol=4, 
+             scales="free") +
+  xlab("Time") + ylab("Fraction of Labile Simulations")
+  
