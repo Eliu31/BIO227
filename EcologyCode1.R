@@ -3,7 +3,7 @@ library(cowplot)
 library(foreach)
 
 theme_set(theme_cowplot())
-outdir <- "211107-plots/"
+outdir <- "211130-plots/"
 
 ########BASIC PARAMETERS##########
 num.years <- 249 #Simulation Years
@@ -14,8 +14,8 @@ Np <- 0.5 #Fraction of Species 1 in initial condition
 m <- 0.01 #Dispersal Probability
 
 ########DISTURBANCE PARAMETERS##########
-Dep.ratio <- 0.95 #Percentage of each patch depleted in disturbance event
-Patch.Dep.ratio <- .9 #Percentage of patches depleted in disturbance event
+Dep.ratio <- 0 #Percentage of each patch depleted in disturbance event
+Patch.Dep.ratio <- .5 #Percentage of patches depleted in disturbance event
 Distubance_events <- 100 #Total Number of Disturbance Events
 Disturbance_interval <- 25 #Time between each disturbance event
 Disturb_year<- seq(Disturbance_interval,Disturbance_interval*Distubance_events,Disturbance_interval) # Disturbance time Vector
@@ -24,7 +24,7 @@ Density_Dependent_Disturbance  <- F #Enable density-dependent disturbance that w
 Density_Dependent_Disturbance_Thresh <- .99 #Saturation threshold for density-dependent disturbance
 
 ########FITNESS PARAMETERS##########
-fit.ratio.m <- 1/10 #Dispersal Fitness Ratio
+fit.ratio.m <- 1/5 #Dispersal Fitness Ratio
 fit.ratio.avg <- vector(length=num.patch)
 fit.ratio.avg[] <- c(1.2,1.2) #Reproductive Fitness ratio
 freq.dep <- vector(length=num.patch)
@@ -32,7 +32,7 @@ freq.dep[] <- 0 # Frequency Dependence
 
 data <- foreach(interval=c(10,25,50,75,100,125,250), .combine="rbind") %do% {
 
-  foreach(simulation=seq(1,3), .combine="rbind") %do% {
+  foreach(simulation=seq(1,2), .combine="rbind") %do% {
     Disturbance_interval <- interval #Time between each disturbance event
     Disturb_year<- seq(Disturbance_interval,Disturbance_interval*Distubance_events,Disturbance_interval) # Disturbance time Vector
 
@@ -121,7 +121,8 @@ data <- foreach(interval=c(10,25,50,75,100,125,250), .combine="rbind") %do% {
   }
 
 }
-
+data <- read.table("BIO227/simulation_output_50reps.txt",
+                   header=TRUE, stringsAsFactors = FALSE)
 
 # Plot the overall abundance of species 1 across all patches.
 data %>%
@@ -160,13 +161,7 @@ data %>%
   geom_bar(aes(x=interval, y=numFixed), stat="identity") +
   ylim(0,max(data$simulation))
 
-## graph the results
-plot(1:num.years, freq.1.mat[,1], type="l", xlab="Time",
-     ylab="Frequency of species 1", ylim=c(0,1))
-for (i in 2:(num.patch)) {
-  lines(1:num.years,freq.1.mat[,i], type="l", lty=2, ylim=c(0,1))}
-
-
+#####PLOT OUTPUT OF A SINGLE SIMULATION############
 # Convert frequency matrix into a dataframe.
 freqs <- as.data.frame(freq.1.mat) %>%
   mutate(time=1:n())
